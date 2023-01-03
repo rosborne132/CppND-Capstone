@@ -7,7 +7,7 @@
 
 #define RGB_VALUE 255.999
 
-void writeColor(std::ostream &out, color pixelColor) {
+void writeColor(std::ostream &out, Color pixelColor) {
     // Write the translated [0,255] value of each color component.
     out << static_cast<int>(RGB_VALUE * pixelColor.x()) << " "
         << static_cast<int>(RGB_VALUE * pixelColor.y()) << " "
