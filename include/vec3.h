@@ -39,6 +39,14 @@ class Vec3 {
 
         double lengthSquared() const { return e[0]*e[0] + e[1]*e[1] + e[2]*e[2]; }
 
+        inline static Vec3 random() {
+            return Vec3(randomDouble(), randomDouble(), randomDouble());
+        }
+
+        inline static Vec3 random(double min, double max) {
+            return Vec3(randomDouble(min,max), randomDouble(min,max), randomDouble(min,max));
+        }
+
     public:
         double e[3];
 };
@@ -89,5 +97,15 @@ inline Vec3 cross(const Vec3 &u, const Vec3 &v) {
 }
 
 inline Vec3 unitVector(Vec3 v) { return v / v.length(); }
+
+inline Vec3 randomInUnitSphere() {
+    while (true) {
+        auto p = Vec3::random(-1, 1);
+
+        if (p.lengthSquared() >= 1) continue;
+
+        return p;
+    }
+}
 
 #endif

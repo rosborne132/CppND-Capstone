@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <memory>
+#include <random>
 
 
 // Usings
@@ -20,8 +21,19 @@ const double pi = 3.1415926535897932385;
 // Utility Functions
 inline double degreesToRadians(double degrees) { return degrees * pi / 180.0; }
 
-// Common Headers
+inline double randomDouble() { return rand() / (RAND_MAX + 1.0); }
 
+inline double randomDouble(double min, double max) { return min + (max - min) * randomDouble(); }
+
+inline double clamp(double x, double min, double max) {
+    if (x < min) return min;
+    if (x > max) return max;
+
+    return x;
+}
+
+
+// Common Headers
 #include "ray.h"
 #include "vec3.h"
 
