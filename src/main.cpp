@@ -4,6 +4,7 @@
 #include "constants.h"
 #include "color.h"
 #include "hittableList.h"
+#include "material.h"
 #include "sphere.h"
 
 double hitSphere(const Point3& center, double radius, const Ray& r) {
@@ -25,12 +26,16 @@ Color rayColor(const Ray& r, const Hittable& world, int depth) {
     if (depth <= 0) return Color(0,0,0);
 
     if (world.hit(r, 0.001, infinity, rec)) {
-        Point3 target = rec.p + randomInHemisphere(rec.normal);
-        return 0.5 * rayColor(Ray(rec.p, target - rec.p), world, depth - 1);
+        Ray scattered;
+        Color attenuation;
+        if (rec.matPtr->scatter(r, rec, attenuation, scattered))
+            return attenuation * rayColor(scattered, world, depth-1);
+        return Color(0,0,0);
     }
 
     Vec3 unitDirection = unitVector(r.direction());
     auto t = 0.5 * (unitDirection.y() + 1.0);
+
     return (1.0 - t) * Color(1.0, 1.0, 1.0) + t * Color(0.5, 0.7, 1.0);
 }
 
@@ -44,8 +49,15 @@ int main() {
 
     // World
     HittableList world;
-    world.add(make_shared<Sphere>(Point3(0, 0, -1), 0.5));
-    world.add(make_shared<Sphere>(Point3(0, -100.5, -1), 100));
+    auto materialGround = std::make_shared<Lambertian>(Color(0.8, 0.8, 0.0));
+    auto materialCenter = std::make_shared<Lambertian>(Color(0.7, 0.3, 0.3));
+    auto materialLeft   = std::make_shared<Metal>(Color(0.8, 0.8, 0.8), 0.3);
+    auto materialRight  = std::make_shared<Metal>(Color(0.8, 0.6, 0.2), 1.0);
+
+    world.add(std::make_shared<Sphere>(Point3(0.0, -100.5, -1.0), 100.0, materialGround));
+    world.add(std::make_shared<Sphere>(Point3(0.0, 0.0, -1.0), 0.5, materialCenter));
+    world.add(std::make_shared<Sphere>(Point3(-1.0, 0.0, -1.0), 0.5, materialLeft));
+    world.add(std::make_shared<Sphere>(Point3(1.0, 0.0, -1.0), 0.5, materialRight));
 
     // Camera
     Camera cam;

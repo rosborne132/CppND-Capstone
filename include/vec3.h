@@ -23,6 +23,7 @@ class Vec3 {
             e[0] += v.e[0];
             e[1] += v.e[1];
             e[2] += v.e[2];
+
             return *this;
         }
 
@@ -30,6 +31,7 @@ class Vec3 {
             e[0] *= t;
             e[1] *= t;
             e[2] *= t;
+
             return *this;
         }
 
@@ -45,6 +47,13 @@ class Vec3 {
 
         inline static Vec3 random(double min, double max) {
             return Vec3(randomDouble(min,max), randomDouble(min,max), randomDouble(min,max));
+        }
+
+        bool nearZero() const {
+            // Return true if the vector is close to zero in all dimensions.
+            const auto s = 1e-8;
+
+            return (fabs(e[0]) < s) && (fabs(e[1]) < s) && (fabs(e[2]) < s);
         }
 
     public:
@@ -117,5 +126,7 @@ Vec3 randomInHemisphere(const Vec3& normal) {
         ? inUnitSphere
         : -inUnitSphere;
 }
+
+Vec3 reflect(const Vec3& v, const Vec3& n) { return v - 2 * dot(v, n) * n; }
 
 #endif
