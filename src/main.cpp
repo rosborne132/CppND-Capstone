@@ -48,19 +48,23 @@ int main() {
     const int maxDepth = 50;
 
     // World
+    auto R = cos(pi/4);
     HittableList world;
-    auto materialGround = std::make_shared<Lambertian>(Color(0.8, 0.8, 0.0));
-    auto materialCenter = std::make_shared<Lambertian>(Color(0.7, 0.3, 0.3));
-    auto materialLeft   = std::make_shared<Metal>(Color(0.8, 0.8, 0.8), 0.3);
-    auto materialRight  = std::make_shared<Metal>(Color(0.8, 0.6, 0.2), 1.0);
 
-    world.add(std::make_shared<Sphere>(Point3(0.0, -100.5, -1.0), 100.0, materialGround));
-    world.add(std::make_shared<Sphere>(Point3(0.0, 0.0, -1.0), 0.5, materialCenter));
-    world.add(std::make_shared<Sphere>(Point3(-1.0, 0.0, -1.0), 0.5, materialLeft));
-    world.add(std::make_shared<Sphere>(Point3(1.0, 0.0, -1.0), 0.5, materialRight));
+    auto materialLeft  = std::make_shared<Lambertian>(Color(0,0,1));
+    auto materialRight = std::make_shared<Lambertian>(Color(1,0,0));
+
+    world.add(std::make_shared<Sphere>(Point3(-R, 0, -1), R, materialLeft));
+    world.add(std::make_shared<Sphere>(Point3( R, 0, -1), R, materialRight));
 
     // Camera
-    Camera cam;
+    Point3 lookfrom(3, 3, 2);
+    Point3 lookat(0, 0, -1);
+    Vec3 vup(0,1,0);
+    auto distToFocus = (lookfrom - lookat).length();
+    auto aperture = 2.0;
+
+    Camera cam(lookfrom, lookat, vup, 20, aspectRatio, aperture, distToFocus);
 
     // Render
     std::cout << "P3\n" << imageWidth << ' ' << imageHeight << "\n255\n";
@@ -70,8 +74,8 @@ int main() {
         for (int i = 0; i < imageWidth; ++i) {
             Color pixelColor(0, 0, 0);
             for (int s = 0; s < samplesPerPixel; ++s) {
-                auto u = (i + randomDouble()) / (imageWidth-1);
-                auto v = (j + randomDouble()) / (imageHeight-1);
+                auto u = (i + randomDouble()) / (imageWidth - 1);
+                auto v = (j + randomDouble()) / (imageHeight - 1);
                 Ray r = cam.getRay(u, v);
                 pixelColor += rayColor(r, world, maxDepth);
             }

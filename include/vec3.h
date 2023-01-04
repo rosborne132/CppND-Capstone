@@ -117,6 +117,16 @@ inline Vec3 randomInUnitSphere() {
     }
 }
 
+inline Vec3 randomInUnitDisk() {
+    while (true) {
+        auto p = Vec3(randomDouble(-1, 1), randomDouble(-1, 1), 0);
+
+        if (p.lengthSquared() >= 1) continue;
+
+        return p;
+    }
+}
+
 Vec3 randomUnitVector() { return unitVector(randomInUnitSphere()); }
 
 Vec3 randomInHemisphere(const Vec3& normal) {
@@ -128,5 +138,13 @@ Vec3 randomInHemisphere(const Vec3& normal) {
 }
 
 Vec3 reflect(const Vec3& v, const Vec3& n) { return v - 2 * dot(v, n) * n; }
+
+Vec3 refract(const Vec3& uv, const Vec3& n, double etaiOverEtat) {
+    auto cosTheta = fmin(dot(-uv, n), 1.0);
+    Vec3 rOutPerp =  etaiOverEtat * (uv + cosTheta * n);
+    Vec3 rOutParallel = -sqrt(fabs(1.0 - rOutPerp.lengthSquared())) * n;
+
+    return rOutPerp + rOutParallel;
+}
 
 #endif

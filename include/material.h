@@ -50,4 +50,38 @@ class Metal : public Material {
         double fuzz;
 };
 
+class Dielectric : public Material {
+    public:
+        Dielectric(double index_of_refraction) : ir(index_of_refraction) {}
+
+        virtual bool scatter(
+            const Ray& rIn, const HitRecord& rec, Color& attenuation, Ray& scattered
+        ) const override {
+            attenuation = Color(1.0, 1.0, 1.0);
+            double refractionRatio = rec.frontFace ? (1.0 / ir) : ir;
+            Vec3 unitDirection = unitVector(rIn.direction());
+            double cosTheta = fmin(dot(-unitDirection, rec.normal), 1.0);
+            double sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+            bool cannotRefract = refractionRatio * sinTheta > 1.0;
+            Vec3 direction = cannotRefract || reflectance(cosTheta, refractionRatio) > randomDouble()
+                ? reflect(unitDirection, rec.normal)
+                : refract(unitDirection, rec.normal, refractionRatio);
+
+            scattered = Ray(rec.p, direction);
+
+            return true;
+        }
+
+    public:
+        double ir; // Index of Refraction
+
+    private:
+        static double reflectance(double cosine, double refIdx) {
+            // Use Schlick's approximation for reflectance.
+            auto r0 = (1 - refIdx) / (1 + refIdx);
+            r0 *= r0;
+            return r0 + (1 - r0) * pow((1 - cosine), 5);
+        }
+};
+
 #endif
