@@ -25,7 +25,7 @@ Color rayColor(const Ray& r, const Hittable& world, int depth) {
     if (depth <= 0) return Color(0,0,0);
 
     if (world.hit(r, 0.001, infinity, rec)) {
-        Point3 target = rec.p + rec.normal + randomInUnitSphere();
+        Point3 target = rec.p + randomInHemisphere(rec.normal);
         return 0.5 * rayColor(Ray(rec.p, target - rec.p), world, depth - 1);
     }
 
