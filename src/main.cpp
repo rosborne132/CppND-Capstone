@@ -43,10 +43,11 @@ HittableList random_scene() {
     HittableList world;
 
     auto groundMaterial = std::make_shared<Lambertian>(Color(0.5, 0.5, 0.5));
-    world.add(make_shared<Sphere>(Point3(0,-1000,0), 1000, groundMaterial));
+    world.add(std::make_shared<Sphere>(Point3(0, -1000, 0), 1000, groundMaterial));
 
-    for (int a = -11; a < 11; a++) {
-        for (int b = -11; b < 11; b++) {
+    // TODO: can optimize by using threads
+    for (int a = 0; a < 5; a++) {
+        for (int b = 0; b < 5; b++) {
             auto chooseMat = randomDouble();
             Point3 center(a + 0.9 * randomDouble(), 0.2, b + 0.9 * randomDouble());
 
@@ -73,15 +74,6 @@ HittableList random_scene() {
         }
     }
 
-    auto material1 = make_shared<Dielectric>(1.5);
-    world.add(std::make_shared<Sphere>(Point3(0, 1, 0), 1.0, material1));
-
-    auto material2 = std::make_shared<Lambertian>(Color(0.4, 0.2, 0.1));
-    world.add(std::make_shared<Sphere>(Point3(-4, 1, 0), 1.0, material2));
-
-    auto material3 = std::make_shared<Metal>(Color(0.7, 0.6, 0.5), 0.0);
-    world.add(std::make_shared<Sphere>(Point3(4, 1, 0), 1.0, material3));
-
     return world;
 }
 
@@ -90,7 +82,7 @@ int main() {
     const auto aspectRatio = 3.0 / 2.0;
     const int imageWidth = 1200;
     const int imageHeight = static_cast<int>(imageWidth / aspectRatio);
-    const int samplesPerPixel = 500;
+    const int samplesPerPixel = 50;
     const int maxDepth = 50;
 
     // World
