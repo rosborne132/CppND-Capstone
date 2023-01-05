@@ -1,4 +1,8 @@
 #include <iostream>
+#include <chrono>
+#include <memory>
+#include <thread>
+#include <vector>
 
 #include "camera.h"
 #include "constants.h"
@@ -46,30 +50,31 @@ HittableList random_scene() {
     world.add(std::make_shared<Sphere>(Point3(0, -1000, 0), 1000, groundMaterial));
 
     // TODO: can optimize by using threads
-    for (int a = 0; a < 5; a++) {
-        for (int b = 0; b < 5; b++) {
-            auto chooseMat = randomDouble();
-            Point3 center(a + 0.9 * randomDouble(), 0.2, b + 0.9 * randomDouble());
+    // TODO: update ot make the centers more random
+    int numOfSphere = 2;
+    for (int a = 0; a < numOfSphere + 1; a++) {
+        auto chooseMat = randomDouble();
+        Point3 center(a + 0.9 * randomDouble(), 0.2,  0.9 * randomDouble());
+        double sphereSize = 0.2;
 
-            if ((center - Point3(4, 0.2, 0)).length() > 0.9) {
-                std::shared_ptr<Material> sphereMaterial;
+        if ((center - Point3(4, 0.2, 0)).length() > 0.9) {
+            std::shared_ptr<Material> sphereMaterial;
 
-                if (chooseMat < 0.8) {
-                    // diffuse
-                    auto albedo = Color::random() * Color::random();
-                    sphereMaterial = make_shared<Lambertian>(albedo);
-                    world.add(make_shared<Sphere>(center, 0.2, sphereMaterial));
-                } else if (chooseMat < 0.95) {
-                    // metal
-                    auto albedo = Color::random(0.5, 1);
-                    auto fuzz = randomDouble(0, 0.5);
-                    sphereMaterial = std::make_shared<Metal>(albedo, fuzz);
-                    world.add(std::make_shared<Sphere>(center, 0.2, sphereMaterial));
-                } else {
-                    // glass
-                    sphereMaterial = std::make_shared<Dielectric>(1.5);
-                    world.add(std::make_shared<Sphere>(center, 0.2, sphereMaterial));
-                }
+            if (chooseMat < 0.8) {
+                // diffuse
+                auto albedo = Color::random() * Color::random();
+                sphereMaterial = std::make_shared<Lambertian>(albedo);
+                world.add(make_shared<Sphere>(center, sphereSize, sphereMaterial));
+            } else if (chooseMat < 0.95) {
+                // metal
+                auto albedo = Color::random(0.5, 1);
+                auto fuzz = randomDouble(0, 0.5);
+                sphereMaterial = std::make_shared<Metal>(albedo, fuzz);
+                world.add(std::make_shared<Sphere>(center, sphereSize, sphereMaterial));
+            } else {
+                // glass
+                sphereMaterial = std::make_shared<Dielectric>(1.5);
+                world.add(std::make_shared<Sphere>(center, sphereSize, sphereMaterial));
             }
         }
     }
@@ -82,6 +87,7 @@ int main() {
     const auto aspectRatio = 3.0 / 2.0;
     const int imageWidth = 1200;
     const int imageHeight = static_cast<int>(imageWidth / aspectRatio);
+    // TODO: add loading counter
     const int samplesPerPixel = 50;
     const int maxDepth = 50;
 
@@ -97,23 +103,66 @@ int main() {
 
     Camera cam(lookfrom, lookat, vup, 20, aspectRatio, aperture, distToFocus);
 
+    auto start = std::chrono::high_resolution_clock::now();
+
     // Render
+    // TODO: Add more threads. 4 total.
+    std::shared_ptr<std::vector<Color>> pointers[2] = {
+        std::make_shared<std::vector<Color>>(),
+        std::make_shared<std::vector<Color>>()
+    };
+
+    // create thread that loops through the first half of the picture
+    // Go through the top half
+    // TODO: refactor into lambda
+    std::thread t1([cam, world, pointers, imageHeight, imageWidth]() mutable {
+        for (int j = imageHeight - 1; j >= (imageHeight / 2); --j) {
+            for (int i = 0; i < imageWidth; ++i) {
+                Color pixelColor(0, 0, 0);
+                for (int s = 0; s < samplesPerPixel; ++s) {
+                    auto u = (i + randomDouble()) / (imageWidth - 1);
+                    auto v = (j + randomDouble()) / (imageHeight - 1);
+                    Ray r = cam.getRay(u, v);
+                    pixelColor += rayColor(r, world, maxDepth);
+                }
+
+                pointers[0]->emplace_back(pixelColor);
+            }
+        }
+    });
+
+    // Bottom half
+    std::thread t2([cam, world, pointers, imageHeight, imageWidth]() mutable {
+        for (int j = (imageHeight / 2) - 1; j >= 0; --j) {
+            for (int i = 0; i < imageWidth; ++i) {
+                Color pixelColor(0, 0, 0);
+                for (int s = 0; s < samplesPerPixel; ++s) {
+                    auto u = (i + randomDouble()) / (imageWidth - 1);
+                    auto v = (j + randomDouble()) / (imageHeight - 1);
+                    Ray r = cam.getRay(u, v);
+                    pixelColor += rayColor(r, world, maxDepth);
+                }
+
+                pointers[1]->emplace_back(pixelColor);
+            }
+        }
+    });
+
+    std::cerr << "\rLoading...";
+
+    t1.join();
+    t2.join();
+
     std::cout << "P3\n" << imageWidth << ' ' << imageHeight << "\n255\n";
 
-    // TODO: check if there is a way to do this with threads
-    for (int j = imageHeight - 1; j >= 0; --j) {
-        std::cerr << "\rScanlines remaining: " << j << " " << std::flush;
-        for (int i = 0; i < imageWidth; ++i) {
-            Color pixelColor(0, 0, 0);
-            for (int s = 0; s < samplesPerPixel; ++s) {
-                auto u = (i + randomDouble()) / (imageWidth - 1);
-                auto v = (j + randomDouble()) / (imageHeight - 1);
-                Ray r = cam.getRay(u, v);
-                pixelColor += rayColor(r, world, maxDepth);
-            }
-            writeColor(std::cout, pixelColor, samplesPerPixel);
+    for (auto pointer : pointers) {
+        for (auto color = pointer->begin(); color != pointer->end(); ++color) {
+            writeColor(std::cout, *color, samplesPerPixel);
         }
     }
 
-    std::cerr << "\nDone. \n";
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duration = end - start;
+
+    std::cerr << "\nTask completed in " << duration.count() << "ms" << std::endl;
 }
