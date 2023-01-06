@@ -8,22 +8,22 @@
 class Sphere : public Hittable {
     public:
         Sphere() {}
-        Sphere(Point3 cen, double r, std::shared_ptr<Material> m) : center(cen), radius(r), matPtr(m) {};
+        Sphere(Point3 cen, double r, std::shared_ptr<Material> m) : _center(cen), _radius(r), _matPtr(m) {};
 
         virtual bool hit(const Ray& r, double tMin, double tMax, HitRecord& rec) const override;
 
-    public:
-        Point3 center;
-        double radius;
-        std::shared_ptr<Material> matPtr;
+    private:
+        Point3 _center;
+        double _radius;
+        std::shared_ptr<Material> _matPtr;
 
 };
 
 bool Sphere::hit(const Ray& r, double tMin, double tMax, HitRecord& rec) const {
-    Vec3 oc = r.origin() - center;
+    Vec3 oc = r.origin() - _center;
     auto a = r.direction().lengthSquared();
     auto halfB = dot(oc, r.direction());
-    auto c = oc.lengthSquared() - radius * radius;
+    auto c = oc.lengthSquared() - _radius * _radius;
     auto discriminant = halfB * halfB - a * c;
 
     if (discriminant < 0) return false;
@@ -41,9 +41,9 @@ bool Sphere::hit(const Ray& r, double tMin, double tMax, HitRecord& rec) const {
 
     rec.t = root;
     rec.p = r.at(rec.t);
-    Vec3 outwardNormal = (rec.p - center) / radius;
+    Vec3 outwardNormal = (rec.p - _center) / _radius;
     rec.setFaceNormal(r, outwardNormal);
-    rec.matPtr = matPtr;
+    rec.matPtr = _matPtr;
 
     return true;
 }

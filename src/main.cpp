@@ -80,7 +80,7 @@ HittableList random_scene(int numOfSphere) {
             }
 
             std::lock_guard<std::mutex> lock(mtx);
-            world.add(make_shared<Sphere>(center, sphereSize, sphereMaterial));
+            world.add(std::make_shared<Sphere>(center, sphereSize, sphereMaterial));
         }
     };
 
@@ -109,9 +109,6 @@ int main() {
     const int samplesPerPixel = 50;
     const int maxDepth = 50;
 
-    // World
-    auto world = random_scene(numOfSpheres);
-
     // Camera
     Point3 lookfrom(13, 2, 3);
     Point3 lookat(0, 0, 0);
@@ -122,6 +119,11 @@ int main() {
     Camera cam(lookfrom, lookat, vup, 20, aspectRatio, aperture, distToFocus);
 
     auto start = std::chrono::high_resolution_clock::now();
+
+    std::cerr << "\rLoading...";
+
+    // World
+    auto world = random_scene(numOfSpheres);
 
     // Render
     std::vector<std::thread> threads;
@@ -159,8 +161,6 @@ int main() {
     for (size_t i = 0; i < 4; ++i) {
         threads.emplace_back(std::thread(processPixels, chunks[i], pointers[i]));
     }
-
-    // std::cerr << "\rLoading...";
 
     for (auto &t : threads) {
         t.join();

@@ -7,15 +7,15 @@ class Ray {
     public:
         Ray() {}
         Ray(const Point3& origin, const Vec3& direction)
-        : origin_(origin), direction_(direction) {}
+        : _origin(origin), _direction(direction) {}
 
-    Point3 at(double t) const { return origin_ + t * direction_; }
-    Vec3 direction() const { return direction_; }
-    Point3 origin() const { return origin_; }
+    Point3 at(double t) const { return _origin + t * _direction; }
+    Vec3 direction() const { return _direction; }
+    Point3 origin() const { return _origin; }
 
     private:
-        Point3 origin_;
-        Vec3 direction_;
+        Point3 _origin;
+        Vec3 _direction;
 };
 
 #endif
