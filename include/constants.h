@@ -25,6 +25,14 @@ inline double randomDouble() { return rand() / (RAND_MAX + 1.0); }
 
 inline double randomDouble(double min, double max) { return min + (max - min) * randomDouble(); }
 
+inline double randomSmallDouble() {
+    std::mt19937 rng;
+    rng.seed(std::random_device{}());
+    std::uniform_real_distribution<double> dist(-3.0, 3.0);
+
+    return dist(rng);
+};
+
 inline double clamp(double x, double min, double max) {
     if (x < min) return min;
     if (x > max) return max;

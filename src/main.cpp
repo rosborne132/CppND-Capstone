@@ -1,6 +1,8 @@
 #include <iostream>
 #include <chrono>
+#include <future>
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -10,6 +12,8 @@
 #include "hittableList.h"
 #include "material.h"
 #include "sphere.h"
+
+std::mutex mtx;
 
 double hitSphere(const Point3& center, double radius, const Ray& r) {
     Vec3 oc = r.origin() - center;
@@ -43,18 +47,19 @@ Color rayColor(const Ray& r, const Hittable& world, int depth) {
     return (1.0 - t) * Color(1.0, 1.0, 1.0) + t * Color(0.5, 0.7, 1.0);
 }
 
-HittableList random_scene() {
+HittableList random_scene(int numOfSphere) {
     HittableList world;
 
     auto groundMaterial = std::make_shared<Lambertian>(Color(0.5, 0.5, 0.5));
     world.add(std::make_shared<Sphere>(Point3(0, -1000, 0), 1000, groundMaterial));
 
-    // TODO: can optimize by using threads
-    // TODO: update ot make the centers more random
-    int numOfSphere = 2;
-    for (int a = 0; a < numOfSphere + 1; a++) {
+    auto makeSphere = [&world](int a) {
         auto chooseMat = randomDouble();
-        Point3 center(a + 0.9 * randomDouble(), 0.2,  0.9 * randomDouble());
+        double x = randomSmallDouble();
+        double y = 0.2;
+        double z = randomSmallDouble();
+        Point3 center(x, y, z);
+
         double sphereSize = 0.2;
 
         if ((center - Point3(4, 0.2, 0)).length() > 0.9) {
@@ -64,35 +69,48 @@ HittableList random_scene() {
                 // diffuse
                 auto albedo = Color::random() * Color::random();
                 sphereMaterial = std::make_shared<Lambertian>(albedo);
-                world.add(make_shared<Sphere>(center, sphereSize, sphereMaterial));
             } else if (chooseMat < 0.95) {
                 // metal
                 auto albedo = Color::random(0.5, 1);
                 auto fuzz = randomDouble(0, 0.5);
                 sphereMaterial = std::make_shared<Metal>(albedo, fuzz);
-                world.add(std::make_shared<Sphere>(center, sphereSize, sphereMaterial));
             } else {
                 // glass
                 sphereMaterial = std::make_shared<Dielectric>(1.5);
-                world.add(std::make_shared<Sphere>(center, sphereSize, sphereMaterial));
             }
+
+            std::lock_guard<std::mutex> lock(mtx);
+            world.add(make_shared<Sphere>(center, sphereSize, sphereMaterial));
         }
+    };
+
+    std::vector<std::future<void>> futures;
+
+    for (int a = 0; a < numOfSphere; ++a) {
+        futures.emplace_back(std::async(std::launch::async, makeSphere, a));
     }
+
+    std::for_each(futures.begin(), futures.end(), [](std::future<void> &ftr) {
+        ftr.wait();
+    });
 
     return world;
 }
 
 int main() {
+    int numOfSpheres;
+    std::cerr << "Enter the number of spheres you would like to render: ";
+    std::cin >> numOfSpheres;
+
     // Image
     const auto aspectRatio = 3.0 / 2.0;
     const int imageWidth = 1200;
     const int imageHeight = static_cast<int>(imageWidth / aspectRatio);
-    // TODO: add loading counter
     const int samplesPerPixel = 50;
     const int maxDepth = 50;
 
     // World
-    auto world = random_scene();
+    auto world = random_scene(numOfSpheres);
 
     // Camera
     Point3 lookfrom(13, 2, 3);
@@ -106,17 +124,24 @@ int main() {
     auto start = std::chrono::high_resolution_clock::now();
 
     // Render
-    // TODO: Add more threads. 4 total.
-    std::shared_ptr<std::vector<Color>> pointers[2] = {
+    std::vector<std::thread> threads;
+
+    std::shared_ptr<std::vector<Color>> pointers[4] = {
+        std::make_shared<std::vector<Color>>(),
+        std::make_shared<std::vector<Color>>(),
         std::make_shared<std::vector<Color>>(),
         std::make_shared<std::vector<Color>>()
     };
 
-    // create thread that loops through the first half of the picture
-    // Go through the top half
-    // TODO: refactor into lambda
-    std::thread t1([cam, world, pointers, imageHeight, imageWidth]() mutable {
-        for (int j = imageHeight - 1; j >= (imageHeight / 2); --j) {
+    int chunks[4][2] = {
+        {imageHeight - 1, (imageHeight / 2) + (imageHeight / 4)},
+        {(imageHeight / 2) + (imageHeight / 4) - 1, (imageHeight / 2)},
+        {(imageHeight / 2) - 1, (imageHeight / 4)},
+        {(imageHeight / 4) - 1, 0}
+    };
+
+    auto processPixels = [cam, world, imageHeight, imageWidth](int* range, std::shared_ptr<std::vector<Color>> colors) mutable {
+        for (int j = range[0]; j >= range[1]; --j) {
             for (int i = 0; i < imageWidth; ++i) {
                 Color pixelColor(0, 0, 0);
                 for (int s = 0; s < samplesPerPixel; ++s) {
@@ -126,32 +151,20 @@ int main() {
                     pixelColor += rayColor(r, world, maxDepth);
                 }
 
-                pointers[0]->emplace_back(pixelColor);
+                colors->emplace_back(pixelColor);
             }
         }
-    });
+    };
 
-    // Bottom half
-    std::thread t2([cam, world, pointers, imageHeight, imageWidth]() mutable {
-        for (int j = (imageHeight / 2) - 1; j >= 0; --j) {
-            for (int i = 0; i < imageWidth; ++i) {
-                Color pixelColor(0, 0, 0);
-                for (int s = 0; s < samplesPerPixel; ++s) {
-                    auto u = (i + randomDouble()) / (imageWidth - 1);
-                    auto v = (j + randomDouble()) / (imageHeight - 1);
-                    Ray r = cam.getRay(u, v);
-                    pixelColor += rayColor(r, world, maxDepth);
-                }
+    for (size_t i = 0; i < 4; ++i) {
+        threads.emplace_back(std::thread(processPixels, chunks[i], pointers[i]));
+    }
 
-                pointers[1]->emplace_back(pixelColor);
-            }
-        }
-    });
+    // std::cerr << "\rLoading...";
 
-    std::cerr << "\rLoading...";
-
-    t1.join();
-    t2.join();
+    for (auto &t : threads) {
+        t.join();
+    }
 
     std::cout << "P3\n" << imageWidth << ' ' << imageHeight << "\n255\n";
 
