@@ -1,6 +1,7 @@
-#include <iostream>
+#include <algorithm>
 #include <chrono>
 #include <future>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <thread>
