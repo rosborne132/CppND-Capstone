@@ -100,7 +100,7 @@ HittableList random_scene(int numOfSphere) {
 
 int main() {
     int numOfSpheres;
-    std::cerr << "Enter the number of spheres you would like to render: ";
+    std::cerr << "Enter the number of spheres you would like to render (anything after 5 takes more time to render): ";
     std::cin >> numOfSpheres;
 
     // Image
