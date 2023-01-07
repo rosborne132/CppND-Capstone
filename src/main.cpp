@@ -48,7 +48,7 @@ Color rayColor(const Ray& r, const Hittable& world, int depth) {
     return (1.0 - t) * Color(1.0, 1.0, 1.0) + t * Color(0.5, 0.7, 1.0);
 }
 
-HittableList random_scene(int numOfSphere) {
+HittableList randomScene(int numOfSphere) {
     HittableList world;
 
     auto groundMaterial = std::make_shared<Lambertian>(Color(0.5, 0.5, 0.5));
@@ -124,7 +124,7 @@ int main() {
     std::cerr << "\rLoading...";
 
     // World
-    auto world = random_scene(numOfSpheres);
+    auto world = randomScene(numOfSpheres);
 
     // Render
     std::vector<std::thread> threads;
